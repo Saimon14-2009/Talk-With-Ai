@@ -1,0 +1,109 @@
+import torch
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
+# Step 1: Load Pre-trained Model and Tokenizer
+model_name = 'gpt2'  # You can use other models like 'gpt-2-medium' or 'gpt-2-large' if available
+
+model = GPT2LMHeadModel.from_pretrained(model_name)
+tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+
+# Step 2: Set the model to evaluation mode (we're not training here)
+model.eval()
+
+# Step 3: Chat function to get responses from the model
+def chat_with_atik_creation(prompt, max_length=150):
+    # Encode the input prompt
+    inputs = tokenizer.encode(prompt, return_tensors='pt')
+    
+    # Generate response using the model
+    with torch.no_grad():  # Disable gradient computation
+        outputs = model.generate(inputs, max_length=max_length, num_return_sequences=1, pad_token_id=tokenizer.eos_token_id)
+    
+    # Decode the generated response and return
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
+
+# Step 4: Function to start a chat with Atik Creation
+def start_chat():
+    print("Atik Creation: Hello, I'm Atik Creation! How can I assist you today?")
+    while True:
+        user_input = input("You: ")  # Get input from the user
+        if user_input.lower() in ['exit', 'quit', 'bye']:
+            print("Atik Creation: Goodbye!")
+            break
+        response = chat_with_atik_creation(user_input)
+        print("Atik Creation:", response)
+
+# Start the chat
+start_chat()
+
+
+
+
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments
+from datasets import load_dataset
+
+# Load the dataset (for example, a conversational dataset)
+dataset = load_dataset("your_dataset_name")
+
+# Tokenize your dataset
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+def tokenize_function(examples):
+    return tokenizer(examples['text'], padding="max_length", truncation=True)
+
+tokenized_datasets = dataset.map(tokenize_function, batched=True)
+
+# Initialize the model
+model = GPT2LMHeadModel.from_pretrained("gpt2")
+
+# Set up training arguments
+training_args = TrainingArguments(
+    output_dir="./results",
+    evaluation_strategy="epoch",
+    learning_rate=5e-5,
+    per_device_train_batch_size=4,
+    num_train_epochs=3,
+    weight_decay=0.01,
+)
+
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=tokenized_datasets['train'],
+    eval_dataset=tokenized_datasets['test'],
+)
+
+# Fine-tune the model
+trainer.train()
+
+
+
+
+from flask import Flask, request, jsonify
+import torch
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
+app = Flask(__name__)
+
+model_name = "gpt2"
+model = GPT2LMHeadModel.from_pretrained(model_name)
+tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+model.eval()
+
+def chat_with_atik_creation(prompt):
+    inputs = tokenizer.encode(prompt, return_tensors='pt')
+    with torch.no_grad():
+        outputs = model.generate(inputs, max_length=150, num_return_sequences=1, pad_token_id=tokenizer.eos_token_id)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    user_input = request.json.get("message")
+    if user_input:
+        response = chat_with_atik_creation(user_input)
+        return jsonify({"response": response})
+    return jsonify({"error": "No message provided"}), 400
+
+if __name__ == "__main__":
+    app.run(debug=True)
